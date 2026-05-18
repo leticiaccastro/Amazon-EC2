@@ -1,0 +1,505 @@
+Lab 4: Working with EBS
+Visão geral do laboratório
+diagrama de arquitetura
+
+O foco deste laboratório é o Amazon Elastic Block Store (Amazon EBS), um importante mecanismo de armazenamento subjacente para instâncias do Amazon EC2. Neste laboratório, você aprenderá a criar um volume do Amazon EBS, associá-lo a uma instância, aplicar um sistema de arquivos ao volume e fazer um backup de snapshot.
+
+ 
+
+Tópicos abordados
+Ao final deste laboratório, você será capaz de:
+
+Criar um volume do Amazon EBS
+
+Associar e montar o volume em uma instância do EC2
+
+Criar um snapshot do volume
+
+Criar um novo volume com base no seu snapshot
+
+Associar e montar o novo volume em sua instância do EC2
+
+ 
+
+Pré-requisitos do laboratório
+Para concluir este laboratório com êxito, você deve estar familiarizado com o uso básico do Amazon EC2 e com a administração básica do servidor Linux. Você deve estar acostumado a usar as ferramentas da linha de comando do Linux.
+
+ 
+
+Duração
+O laboratório levará aproximadamente 30 minutos para ser concluído.
+
+ 
+
+Restrições de serviço da AWS
+Neste ambiente de laboratório, o acesso aos serviços e às ações de serviços da AWS pode ser restrito ao necessário para concluir as instruções do laboratório. Você poderá encontrar erros se tentar acessar outros serviços ou executar ações além das descritas neste laboratório.
+
+ 
+
+O que é Amazon Elastic Block Store?
+O Amazon Elastic Block Store (Amazon EBS) oferece armazenamento persistente para instâncias do Amazon EC2. Os volumes do Amazon EBS são vinculados à rede e persistem de maneira independente à vida útil de uma instância. Os volumes do Amazon EBS são volumes altamente disponíveis e extremamente confiáveis que podem ser aproveitados como uma partição de inicialização das instâncias do Amazon EC2 ou associados a uma instância em execução do Amazon EC2 como um dispositivo de blocos padrão.
+
+Quando utilizadas como uma partição de inicialização, as instâncias do Amazon EC2 podem ser interrompidas e posteriormente reiniciadas, permitindo que você pague somente pelos recursos de armazenamento utilizados, mantendo o estado de sua instância. Os volumes do Amazon EBS oferecem melhor durabilidade em comparação aos armazenamentos locais de instâncias do Amazon EC2, porque os volumes do Amazon EBS são automaticamente replicados no back-end (em uma única zona de disponibilidade).
+
+Para aqueles que desejam ainda maior durabilidade, o Amazon EBS fornece a capacidade de criar snapshots de momentos específicos de seus volumes, sendo armazenados no Amazon Simple Storage Service (Amazon S3) e automaticamente duplicados pelas várias zonas de disponibilidade. Esses snapshots podem ser usados como ponto inicial para novos volumes do Amazon EBS e podem proteger seus dados para uma durabilidade a longo prazo. Você pode também, facilmente, compartilhar esses snapshots com os colegas de trabalho e com outros desenvolvedores da AWS.
+
+Este guia de laboratório explica os conceitos básicos do Amazon EBS detalhadamente. No entanto, ele pode incluir apenas uma breve visão geral dos conceitos do Amazon EBS. Para obter mais informações, consulte a documentação do Amazon EBS.
+
+ 
+
+Recursos de volume Amazon EBS
+Os volumes do Amazon EBS contam com os seguintes recursos:
+
+Armazenamento persistente: a vida útil do volume independe de qualquer instância específica do Amazon EC2.
+
+Uso geral: os volumes do Amazon EBS são dispositivos de blocos brutos e não formatados que podem ser usados em qualquer sistema operacional.
+
+Alto desempenho: os volumes do Amazon EBS são iguais ou melhores que as unidades locais do Amazon EC2.
+
+Alta confiabilidade: os volumes do Amazon EBS têm redundância integrada em uma zona de disponibilidade.
+
+Projetado para resiliência: a AFR (taxa anual de falhas) do Amazon EBS está entre 0,1% e 1%.
+
+Tamanho variável: os tamanhos de volume variam de 1 GB a 16 TB.
+
+Fácil de usar: os volumes do Amazon EBS podem ser facilmente criados, associados, incluídos em backup, restaurados e excluídos.
+
+ 
+
+ 
+
+Acessar o Console de Gerenciamento da AWS
+Na parte superior destas instruções, clique em Start Lab (Iniciar laboratório) para iniciar o laboratório.
+
+Um painel “Start Lab” (Iniciar laboratório) é aberto exibindo o status do laboratório.
+
+ 
+
+Aguarde até que a mensagem "Lab status: ready" (Status do laboratório: pronto) seja exibida e clique no X para fechar o painel Start Lab (Iniciar laboratório).
+
+ 
+
+Na parte superior destas instruções, clique em AWS.
+
+Isso abrirá o Console de Gerenciamento da AWS em uma nova guia do navegador. O sistema fará o login automaticamente.
+
+Dica: se uma nova guia do navegador não abrir, normalmente um banner ou um ícone na parte superior do navegador indicará que o navegador está impedindo que o site abra janelas pop-up. Clique no banner ou ícone e escolha "Allow pop ups" (Permitir pop-ups).
+
+ 
+
+Configure a guia Console de Gerenciamento da AWS para que seja exibida junto a estas instruções. O ideal seria você poder visualizar as duas guias do navegador ao mesmo tempo para facilitar o acompanhamento das etapas do laboratório.
+
+ 
+ 
+
+Tarefa 1: criar um volume do EBS
+Nesta tarefa, você criará e associará um volume do Amazon EBS a uma nova instância do Amazon EC2.
+
+ 
+
+No Console de Gerenciamento da AWS, no menu Serviços, clique em EC2.
+
+ 
+
+No painel de navegação à esquerda, escolha Instances (Instâncias).
+
+Uma instância do Amazon EC2 chamada Lab já foi executada para o laboratório.
+
+ 
+
+Observe a Zona de Disponibilidade da instância. Ela será semelhante a us-west-1a.
+
+ 
+
+No painel de navegação à esquerda, selecione Volumes.
+
+Você verá um volume existente que a instância do Amazon EC2 está usando. Esse volume tem um tamanho de 8 GiB, o que facilita a distinção do volume que você criará em seguida, que será de 1 GiB.
+
+ 
+
+Clique em Create Volume (Criar volume) e configure:
+
+Volume Type: General Purpose SSD (gp2)
+
+Size (GiB): 1. OBSERVAÇÃO: você pode estar impedido de criar volumes grandes.
+
+Availability Zone: selecione a mesma Zona de Disponibilidade da instância do EC2.
+
+Escolha Add Tag (Adicionar tag)
+
+No Tag Editor (Editor de tags), insira:
+
+Key: Name
+
+Value: My Volume
+
+ 
+
+Selecione Create volume (Criar volume)
+
+O volume será exibido na lista e o estado dele mudará de Criando para Disponível. Pode ser necessário atualizar  para ver o novo volume.
+
+ 
+ 
+
+Tarefa 2: associar o volume a uma instância
+Agora você pode associar seu novo volume à instância do Amazon EC2.
+
+ 
+
+Selecione  My Volume (Meu volume).
+
+ 
+
+No menu Actions (Ações), escolha Attach Volume (Anexar volume).
+
+ 
+
+Clique no campo Instância e selecione a instância exibida (Lab).
+
+Para o Nome do dispositivo, escolha /dev/sdb/ no menu suspenso.
+
+Observação: você usará esse identificador de dispositivo em uma tarefa posterior.
+
+ 
+
+Escolha Anexar volume
+   O estado do volume agora é Em uso.
+
+ 
+ 
+
+Tarefa 3: conectar-se à instância do Amazon EC2
+ Usuários do Windows: usar SSH para conexão
+ Estas instruções são apenas para usuários do Windows.
+
+Se você estiver usando macOS ou Linux, vá para a próxima seção.
+
+Leia os três tópicos dessa etapa antes de iniciar a execução das ações, não será possível visualizar essas instruções quando o painel Details (Detalhes) estiver aberto.
+
+Clique no menu suspenso Details (Detalhes) acima das instruções que você está lendo e selecione Show (Exibir). Uma janela Credentials (Credenciais) será aberta.
+
+Clique no botão Download PPK (Baixar PPK) e salve o arquivo labsuser.ppk. Normalmente, o navegador o salva no diretório Downloads.
+
+Saia do painel Details (Detalhes) clicando no X.
+
+ 
+
+Baixe o software necessário.
+
+Você usará o PuTTY para se conectar às instâncias do Amazon EC2 com SSH. Se você não tiver o PuTTY instalado no seu computador, baixe aqui.
+
+Abra putty.exe
+
+Configure o PuTTY para não atingir o tempo limite:
+
+Selecione Connection (Conexão)
+
+Configure Seconds between keepalives (Segundos entre os keepalives) para 30
+
+Isso permite manter a sessão do PuTTY aberta por mais tempo.
+
+ 
+
+Configure sua sessão do PuTTY:
+
+Selecione Session (Sessão)
+
+Host Name (or IP address) (Nome do host (ou endereço IP)): cole o DNS público ou o endereço IPv4 da instância Lab que você anotou anteriormente.
+
+De volta ao PuTTY, na lista Connection (Conexão), expanda  SSH
+
+Selecione Auth (Autenticação) e expanda  Credentials (Credenciais)
+
+Em Private key file for authentication (Arquivo de chave privada para autenticação), clique em Browse (Navegar)
+
+Navegue até o arquivo labsuser.ppk baixado, selecione-o e escolha Open (Abrir)
+
+Clique em Open (Abrir) novamente
+
+Para confiar e se conectar ao host, escolha Accept (Aceitar).
+
+Quando solicitado a fazer login as (login como), insira: ec2-user
+
+Isso conectará você à instância do EC2.
+
+ 
+
+Usuários do Windows: clique aqui para avançar para a próxima tarefa.
+
+
+Usuários do macOS  e Linux 
+Estas instruções são apenas para usuários do Mac/Linux. Se você for usuário do Windows, vá para a próxima tarefa.
+
+ 
+
+Leia os três tópicos dessa etapa antes de iniciar a execução das ações, não será possível visualizar essas instruções quando o painel Details (Detalhes) estiver aberto.
+
+Clique no menu suspenso Details (Detalhes) acima das instruções que você está lendo e selecione Show (Exibir). Uma janela Credentials (Credenciais) será aberta.
+
+Clique no botão Download (Baixar) e salve o arquivo labsuser.pem.
+
+Saia do painel Details (Detalhes) clicando no X.
+
+ 
+
+Abra uma janela do terminal e altere o diretório cd para o diretório no qual o arquivo labsuser.pem foi baixado.
+
+Por exemplo, execute este comando se ele tiver sido salvo no diretório Downloads:
+
+cd ~/Downloads
+ 
+
+Altere as permissões na chave para serem somente leitura, executando este comando:
+
+chmod 400 labsuser.pem
+ 
+
+Retorne ao Console de Gerenciamento da AWS e no serviço EC2, escolha Instâncias.
+
+A instância Lab deve estar selecionada.
+
+Na guia Details (Detalhes), copie o valor de Public IPv4 address (Endereço IPv4 público).
+
+Retorne à janela do terminal e execute este comando (substitua <public-ip> pelo endereço IP público real que você copiou):
+
+ssh -i labsuser.pem ec2-user@<public-ip>
+ 
+
+Digite yes quando solicitado para permitir a primeira conexão ao servidor SSH remoto.
+
+Como você está usando um par de chaves para autenticação, não será necessário fornecer uma senha.
+
+
+ 
+ 
+
+Tarefa 4: criar e configurar o sistema de arquivos
+Nesta tarefa, você adicionará o novo volume a uma instância do Linux como um sistema de arquivos ext3 no ponto de montagem /mnt/data-store.
+
+ Se estiver usando PuTTY, clique com o botão direito do mouse na janela do PuTTY para colar texto.
+
+ 
+
+Visualize o armazenamento disponível em sua instância:
+
+df -h
+Você deve ver um resultado semelhante a este:
+
+Filesystem      Size  Used Avail Use% Mounted on
+devtmpfs        484M     0  484M   0% /dev
+tmpfs           492M     0  492M   0% /dev/shm
+tmpfs           492M  460K  491M   1% /run
+tmpfs           492M     0  492M   0% /sys/fs/cgroup
+/dev/xvda1      8.0G  1.5G  6.6G  19% /
+tmpfs            99M     0   99M   0% /run/user/0
+tmpfs            99M     0   99M   0% /run/user/1000
+Ela mostra o volume de disco original de 8 GB. Seu novo volume ainda não aparece.
+
+ 
+
+Crie um sistema de arquivos ext3 no novo volume:
+
+sudo mkfs -t ext3 /dev/sdb
+ 
+
+Crie um diretório para montar o novo volume de armazenamento:
+
+sudo mkdir /mnt/data-store
+ 
+
+Monte o novo volume:
+
+sudo mount /dev/sdb /mnt/data-store
+Para configurar a instância do Linux para montar esse volume sempre que a instância for iniciada, você precisará adicionar uma linha a /etc/fstab.
+
+echo "/dev/sdb   /mnt/data-store ext3 defaults,noatime 1 2" | sudo tee -a /etc/fstab
+ 
+
+Visualize o arquivo de configuração para verificar a configuração na última linha:
+
+cat /etc/fstab
+ 
+
+Visualize o armazenamento disponível novamente:
+
+df -h
+O resultado agora conterá uma linha adicional – /dev/xvdb:
+
+Filesystem      Size  Used Avail Use% Mounted on
+devtmpfs        484M     0  484M   0% /dev
+tmpfs           492M     0  492M   0% /dev/shm
+tmpfs           492M  460K  491M   1% /run
+tmpfs           492M     0  492M   0% /sys/fs/cgroup
+/dev/xvda1      8.0G  1.5G  6.6G  19% /
+tmpfs            99M     0   99M   0% /run/user/0
+tmpfs            99M     0   99M   0% /run/user/1000
+/dev/xvdb       976M  1.3M  924M   1% /mnt/data-store
+ 
+
+No volume montado, crie um arquivo e adicione um texto a ele.
+
+sudo sh -c "echo some text has been written > /mnt/data-store/file.txt"
+ 
+
+Verifique se o texto foi gravado no volume.
+
+cat /mnt/data-store/file.txt
+ 
+ 
+
+Tarefa 5: criar um snapshot do Amazon EBS
+Nesta tarefa, você criará um snapshot do seu volume do EBS.
+
+Você pode criar qualquer número de snapshots pontuais e consistentes dos volumes do Amazon EBS a qualquer momento. Os snapshots do Amazon EBS são armazenados no Amazon S3 com alta durabilidade. Novos volumes do Amazon EBS podem ser criados com base em snapshots para clonagem ou restauração de backups. Os snapshots do Amazon EBS também podem ser facilmente compartilhados entre usuários da AWS ou copiados para Regiões AWS.
+
+ 
+
+No Console de Gerenciamento da AWS, clique em Volumes e selecione  My Volume (Meu volume).
+
+ 
+
+No menu Actions (Ações), selecione Create snapshot (Criar snapshot).
+
+ 
+
+Escolha Add tag (Adicionar tag) e configure:
+
+Key: Name
+
+Value: My Snapshot
+
+Escolha Create snapshot (Criar snapshot).
+
+ 
+
+No painel de navegação à esquerda, escolha Snapshots.
+
+Seu snapshot será exibido. O status começará com um estado Pending (Pendente), o que significa que o snapshot está sendo criado. Em seguida, ele será alterado para o estado Completed (Concluído).
+
+Observação: somente os blocos de armazenamento usados são copiados para os snapshots, portanto, os blocos vazios não ocupam espaço de armazenamento do snapshot.
+
+ 
+
+Na sessão SSH remota, exclua o arquivo que você criou no seu volume.
+
+sudo rm /mnt/data-store/file.txt
+ 
+
+Verifique se o arquivo foi excluído.
+
+ls /mnt/data-store/
+O arquivo foi excluído.
+
+ 
+ 
+
+Tarefa 6: restaurar o snapshot do Amazon EBS
+Se você quiser recuperar os dados armazenados em um snapshot, poderá Restaurar o snapshot em um novo volume do EBS.
+
+ 
+
+Criar um volume por meio do seu snapshot
+No Console de Gerenciamento da AWS, selecione  My Snapshot (Meu snapshot).
+
+ 
+
+No menu Actions (Ações), selecione Create volume from snapshot (Criar volume do snapshot).
+
+ 
+
+Em Availability Zone (Zona de Disponibilidade), selecione a mesma zona de disponibilidade usada anteriormente.
+
+ 
+
+Escolha Add tag (Adicionar tag) e configure:
+
+Key: Name
+
+Value: Restored Volume
+
+Selecione Create volume (Criar volume)
+
+Observação: ao restaurar um snapshot para um novo volume, você também pode modificar a configuração, como alterar o tipo de volume, o tamanho ou a Zona de Disponibilidade.
+
+ 
+
+Anexar o volume restaurado à sua instância do EC2
+No painel de navegação à esquerda, selecione Volumes.
+
+ 
+
+Selecione  Restored Volume (Volume restaurado).
+
+ 
+
+No menu Actions (Ações), escolha Attach Volume (Anexar volume).
+
+ 
+
+Clique no campo Instância e selecione a instância exibida (Lab).
+
+Para o Nome do dispositivo, escolha /dev/sdc/ (ou qualquer próximo identificador disponível) no menu suspenso.
+
+Escolha Associar volume
+
+O estado do volume agora é in-use (em uso).
+
+ 
+
+Montar o volume restaurado
+Crie um diretório para montar o novo volume de armazenamento:
+
+sudo mkdir /mnt/data-store2
+ 
+
+Monte o novo volume:
+
+sudo mount /dev/sdc /mnt/data-store2
+ 
+
+Verifique se o volume montado tem o arquivo que você criou anteriormente.
+
+ls /mnt/data-store2/
+Você deverá ver file.txt.
+
+ 
+ 
+
+Conclusão
+ Parabéns! Você concluiu com sucesso as tarefas:
+
+Criou um volume do Amazon EBS
+
+Associou o volume a uma instância do EC2
+
+Criou um sistema de arquivos no volume
+
+Adicionou um arquivo ao volume
+
+Criou um snapshot do seu volume
+
+Criou um novo volume com base no snapshot
+
+Associou e montou o novo volume na sua instância do EC2
+
+Verificou se o arquivo que você criou anteriormente estava no volume recém-criado
+
+ 
+
+Laboratório concluído
+ Parabéns! Você concluiu o laboratório.
+
+ 
+
+Selecione End Lab (Encerrar laboratório) na parte superior da página e clique em Yes (Sim) para confirmar sua decisão.
+
+Um painel será exibido com a mensagem: "DELETE has been initiated... você pode fechar esta caixa de mensagem agora.”
+
+ 
+
+Clique no X no canto superior direito para fechar o painel.
+
+ 
+
+© 2026 Amazon Web Services, Inc. e suas afiliadas. Todos os direitos reservados. Este trabalho não pode ser reproduzido ou redistribuído, no todo ou em parte, sem a permissão prévia por escrito da Amazon Web Services, Inc. É proibido copiar, emprestar ou vender para fins comerciais.
